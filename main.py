@@ -18,9 +18,10 @@ def run(event, context):
     gb = GraphBuilder()
     graph = gb.run()
     tmp_file = "/tmp/tmp.json"
+    # tmp_file = "/Users/laemmel/svn/qleap/graph/graph_data/mwe_graph.json"
     with open(tmp_file, "w") as tmp:
         json.dump(graph, tmp)
-
+    #
     bucket_name = "qleap.ai"
     destination_blob_name = "graph_data/mwe_graph.json"
     storage_client = storage.Client()
