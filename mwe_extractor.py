@@ -106,7 +106,7 @@ def train_mwe_model_from_json(articles):
     # if path.exists("./models/model"):
     #     phrases_model = SaveLoad.load("./models/model")
     # else:
-    phrases_model = Phrases(common_terms=accepted_connectors,min_count=5)
+    phrases_model = Phrases(common_terms=accepted_connectors,min_count=2)
     for document in articles:
 
         if 'text' in document.keys():

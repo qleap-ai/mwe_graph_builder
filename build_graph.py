@@ -6,17 +6,29 @@ import time
 from datetime import datetime
 import networkx as nx
 from networkx.algorithms import community
+import math
 
 
 class Node:
-    def __init__(self, name):
+    def __init__(self, name, article):
         self.num_id = 0
         self.name = name
         self.value = 1
         self.group = 0
+        self.article = article
+        self.centroid = False
 
     def increment(self):
         self.value += 1
+
+    def set_value(self, v):
+        self.value = v
+
+    def set_centroid(self, c):
+        self.centroid = c
+
+    def is_centroid(self):
+        return self.centroid
 
     def to_dict(self):
         return {'id': self.name}
@@ -33,13 +45,15 @@ class Node:
     def set_group(self, group):
         self.group = group
 
+    def get_group(self):
+        return self.group
+
 
 class Link:
-    def __init__(self, id, fr, to, source):
+    def __init__(self, id, fr, to):
         self.id = id
         self.fr = fr
         self.to = to
-        self.source = source
         self.value = 1
         self.num_id = 0
 
@@ -47,7 +61,7 @@ class Link:
         self.value += 1
 
     def to_dict(self):
-        return {'id': self.id, 'source': self.fr, 'target': self.to, "type": self.source}
+        return {'id': self.id, 'source': self.fr.get_id(), 'target': self.to.get_id()}
 
     def set_num_id(self, id):
         self.num_id = id
@@ -58,12 +72,16 @@ class Link:
     def get_id(self):
         return self.id
 
+    def weight(self):
+        return self.value
+
 
 class GraphBuilder:
 
     def __init__(self):
         self.nodes = {}
-        self.links = {}
+        self.links = []
+        self.connectors = {}
         self.handles = set()
         self.fire_db = firestore.Client()
         self.normalized = {}
@@ -94,7 +112,8 @@ class GraphBuilder:
         for article in articles:
             mwes_in_article = self.match_mwes(article, mwes)
             # self.update_nodes(mwes_in_article)
-            self.update_links(list(mwes_in_article), article['handle'])
+            self.link_article(mwes_in_article, article)
+        self.create_graph()
         self.run_graph_analytics()
 
     def match_mwes(self, article, mwes):
@@ -107,31 +126,38 @@ class GraphBuilder:
 
         return matches
 
-    def update_links(self, mwes_in_article, handle):
-        for mwe in mwes_in_article:
-            if mwe in self.nodes.keys():
-                node = self.nodes[mwe]
-                node.increment()
-            else:
-                node = Node(mwe)
-                self.nodes[mwe] = node
+    def link_article(self, mwes_in_article, article):
+        node = Node(article['id'], article)
+        self.nodes[node.name] = node
+        self.connectors[node] = mwes_in_article
 
-        for i in range(0, len(mwes_in_article) - 1):
-            for j in range(i + 1, len(mwes_in_article)):
-                mwe1 = mwes_in_article[i]
-                mwe2 = mwes_in_article[j]
-                id = ''
-                if mwe1 < mwe2:
-                    id = mwe1 + "_" + mwe2 + "_" + handle
-                else:
-                    id = mwe2 + "_" + mwe1 + "_" + handle
-
-                if id in self.links.keys():
-                    l = self.links[id]
-                    l.increment()
-                else:
-                    l = Link(id, mwe1, mwe2, handle)
-                    self.links[id] = l
+    def create_graph(self):
+        node_list = [node for node in self.connectors.keys()]
+        idx = 0
+        for i in range(0, len(node_list) - 1):
+            links_already = {}
+            n1 = node_list[i]
+            mwe1 = self.connectors[n1]
+            for j in range(i + 1, len(node_list)):
+                n2 = node_list[j]
+                mwe2 = self.connectors[n1]
+                for mwe in mwe1:
+                    if mwe in mwe2:
+                        k1 = n1.get_id() + "_" + n2.get_id()
+                        k2 = n2.get_id() + "_" + n1.get_id()
+                        if k1 in links_already.keys():
+                            l1 = links_already[k1]
+                            l1.increment()
+                            l2 = links_already[k2]
+                            l2.increment()
+                        else:
+                            l1 = Link(idx, n1, n2)
+                            links_already[k1] = l1
+                            self.links.append(l1)
+                            idx += 1
+                            l2 = Link(idx, n1, n2)
+                            links_already[k2] = l2
+                            self.links.append(l2)
 
     def filter_unique(self, articles):
 
@@ -174,42 +200,36 @@ class GraphBuilder:
         mwes['mwes'] = [re.sub('[_]+', ' ', word) for word in raw_mwes]
         tmp = []
         for mwe in mwes['mwes']:
-            if len(mwe.split()) >= 2:
+            if len(mwe.split()) >= 3:
                 tmp.append(mwe)
         mwes['mwes'] = tmp
         self.normalize(tmp)
         from_date = str(datetime.fromtimestamp(fr))
         to_date = str(datetime.fromtimestamp(to))
         self.build_graph(mwes, articles)
-        return {'nodes': [{'id': node.name, 'group': node.group, 'count': node.value} for node in self.nodes.values()],
-                'links': [link.to_dict() for link in self.links.values()],
-                'from_ts': fr, 'to_ts': to, 'from_date': from_date, 'to_date': to_date, 'sources': list(self.handles)}
+        return {
+            'nodes': [
+                {'id': node.name, 'centroid': node.centroid, 'url': node.article['url'], 'title': node.article['title'],
+                 'group': node.group,
+                 'count': node.value} for
+                node in self.nodes.values()],
+            'links': [link.to_dict() for link in self.links],
+            'from_ts': fr, 'to_ts': to, 'from_date': from_date, 'to_date': to_date, 'sources': list(self.handles)}
 
     def run_graph_analytics(self):
         import matplotlib.pyplot as plt
         G = nx.Graph()
 
-        nodes_dict = {}
-        for k in self.nodes.keys():
-            node = self.nodes[k]
-            nodes_dict[k] = node
-            # node.set_num_id(idx)
-            # idx += 1
-            # n_id_to_num_id[node.get_id()] = node.get_num_id()
-            # n_num_id_to_node[node.get_num_id()] = node
-            # G.add_node(node.get_num_id())
-
         l_id_to_num_id = {}
         l_num_id_to_link = {}
         idx = 0
-        for k in self.links.keys():
-            link = self.links[k]
+        for link in self.links:
             # link.set_num_id(idx)
             # idx += 1
             # l_id_to_num_id[link.get_id()] = link.get_num_id()
             # l_num_id_to_link[link.get_num_id()] = link
             # G.add_edge(n_id_to_num_id[link.fr],n_id_to_num_id[link.to])
-            G.add_edge(link.fr, link.to)
+            G.add_edge(link.fr, link.to, weight=link.weight())
 
         communities_generator = community.girvan_newman(G)
         top_level_communities = next(communities_generator)
@@ -226,15 +246,45 @@ class GraphBuilder:
 
         # d = next(communities_generator)
         group = 0
+        sz = 0
+        bg = None
         for s in top_level_communities:
-            for k in s:
-                node = nodes_dict[k]
+            if len(s) > sz:
+                sz = len(s)
+                bg = group
+            for node in s:
                 node.set_group(group)
             group += 1
+            sub = G.subgraph(s)
+            pr = nx.pagerank_numpy(sub, alpha=0.9, weight='weight')
+            mx_rank = 0
+            mx_node = None
+            for k in pr.keys():
+                v = pr[k]
+                k.set_value(2 * math.exp(v))
+                if v > mx_rank:
+                    mx_rank = v
+                    mx_node = k
+                # k.set_value(10*)
+            mx_node.set_centroid(True)
 
-        # pos = nx.spring_layout(G)  # positions for all nodes
+        new_links = []
+        for link in self.links:
+            # if link.fr.get_group() == bg or link.to.get_group() == bg:
+            #     continue
+            if link.fr.get_group() == link.to.get_group() or link.fr.is_centroid() or link.to.is_centroid():
+                new_links.append(link)
+            else:
+                pass
+        self.links = new_links
         #
-        # # nodes
+        # pr = nx.pagerank_numpy(G, alpha=0.9,weight='weight')
+        # for k in pr.keys():
+        #     v = pr[k]
+        #     k.set_value(10*math.exp(v))
+        # k.set_value(10*)
+        # nodes
+        # pos = nx.spring_layout(G)  # positions for all nodes
         # nx.draw_networkx_nodes(G, pos, nodelist=list(top_level_communities[0]), node_color='r', node_size=700)
         # nx.draw_networkx_nodes(G, pos, nodelist=list(top_level_communities[1]), node_color='b', node_size=700)
         # nx.draw_networkx_nodes(G, pos, nodelist=list(top_level_communities[2]), node_color='g', node_size=700)
@@ -258,5 +308,3 @@ class GraphBuilder:
                     continue
                 if mwe in mwe2:
                     self.normalized[mwe] = mwe2
-
-        pass
