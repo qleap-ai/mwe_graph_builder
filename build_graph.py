@@ -188,7 +188,7 @@ class GraphBuilder:
         # fr = mwes['from_date']
         # to = mwes['to_date']
         to = time.time()
-        fr = to - 4 * 3600
+        fr = to - 2 * 3600
         articles = self.load_articles(fr, to)
         articles = self.rm_inconsitent(articles)
         articles = self.filter_unique(articles)
