@@ -188,7 +188,7 @@ class GraphBuilder:
         # fr = mwes['from_date']
         # to = mwes['to_date']
         to = time.time()
-        fr = to - 2 * 3600
+        fr = to - 4 * 3600
         articles = self.load_articles(fr, to)
         articles = self.rm_inconsitent(articles)
         articles = self.filter_unique(articles)
@@ -200,7 +200,7 @@ class GraphBuilder:
         mwes['mwes'] = [re.sub('[_]+', ' ', word) for word in raw_mwes]
         tmp = []
         for mwe in mwes['mwes']:
-            if len(mwe.split()) >= 3:
+            if len(mwe.split()) >= 2:
                 tmp.append(mwe)
         mwes['mwes'] = tmp
         self.normalize(tmp)
