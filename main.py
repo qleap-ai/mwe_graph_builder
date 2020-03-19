@@ -21,7 +21,7 @@ def run(event, context):
     gb = GraphBuilder()
     graph = gb.run()
     graph['about'] = "When reading news online it is often the case that a main topic is covered thoroughly across " \
-                     "manny outlets. Sometimes it is difficult to find other relevant information apart of the main topic. " \
+                     "many outlets. Sometimes it is difficult to find other relevant information apart of the main topic. " \
                      "This website shows central but well-distinct news headlines of the last two hours from various news sources.<br>" \
                      "The approach collects and clusters the news articles of the last two hours into different groups based on their " \
                      "semantic features. The displayed headlines correspond to the most central one per group. " \
@@ -51,4 +51,4 @@ def run(event, context):
     blob.upload_from_filename(tmp_file)
 
 
-run("","")
+# run("","")
