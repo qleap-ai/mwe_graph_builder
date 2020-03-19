@@ -28,8 +28,7 @@ def run(event, context):
                      "The size of the nodes indicate the centrality of the individual headline.<br>" \
                      "The content of this pages refreshes every hour. You just have to click the reload button. " \
                      "For question or comments please email me at gregor_AT_qleap_DOT_ai."
-    # tmp_file = "/tmp/tmp.json"
-    tmp_file = "/Users/laemmel/svn/qleap/graph/graph_data/mwe_graph_1.json"
+    tmp_file = "/tmp/tmp.json"
     with open(tmp_file, "w") as tmp:
         json.dump(graph, tmp)
     #
