@@ -212,7 +212,7 @@ class GraphBuilder:
                 {'id': node.name, 'centroid': node.centroid, 'url': node.article['url'], 'title': node.article['title'],
                  'group': node.group,
                  'count': node.value} for
-                node in self.nodes.values()],
+                node in self.nodes.values() if node.centroid is True],
             'links': [link.to_dict() for link in self.links],
             'from_ts': fr, 'to_ts': to, 'from_date': from_date, 'to_date': to_date, 'sources': list(self.handles)}
 
@@ -283,6 +283,7 @@ class GraphBuilder:
             else:
                 pass
         self.links = new_links
+
         #
         # pr = nx.pagerank_numpy(G, alpha=0.9,weight='weight')
         # for k in pr.keys():

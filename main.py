@@ -51,4 +51,4 @@ def run(event, context):
     blob.upload_from_filename(tmp_file)
 
 
-# run("","")
+run("","")
