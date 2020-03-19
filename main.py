@@ -38,7 +38,7 @@ def run(event, context):
 
 
     # rotate old
-    for i in range(9, 0, -1):
+    for i in range(9, -1, -1):
         source_blob_name = "graph_data/mwe_graph_"+str(i)+".json"
         target_blob_name = "graph_data/mwe_graph_" + str(i+1) + ".json"
 
@@ -52,3 +52,4 @@ def run(event, context):
     blob.upload_from_filename(tmp_file)
 
 
+# run("","")
