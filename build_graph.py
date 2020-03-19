@@ -61,7 +61,7 @@ class Link:
         self.value += 1
 
     def to_dict(self):
-        return {'id': self.id, 'source': self.fr.get_id(), 'target': self.to.get_id()}
+        return {'id': self.id, 'source': self.fr.get_id(), 'target': self.to.get_id(), 'strength': self.value}
 
     def set_num_id(self, id):
         self.num_id = id
