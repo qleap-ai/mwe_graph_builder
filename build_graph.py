@@ -235,9 +235,9 @@ class GraphBuilder:
         top_level_communities = next(communities_generator)
         top_level_communities = next(communities_generator)
         top_level_communities = next(communities_generator)
-        top_level_communities = next(communities_generator)
-        top_level_communities = next(communities_generator)
-        top_level_communities = next(communities_generator)
+        # top_level_communities = next(communities_generator)
+        # top_level_communities = next(communities_generator)
+        # top_level_communities = next(communities_generator)
         # top_level_communities = next(communities_generator)
         # next_level_communities = next(communities_generator)
         # a = next(communities_generator)
@@ -254,6 +254,7 @@ class GraphBuilder:
                 bg = group
             for node in s:
                 node.set_group(group)
+                node.set_value(max(3, min(20, len(s))))
             group += 1
             sub = G.subgraph(s)
             pr = nx.pagerank_numpy(sub, alpha=0.9, weight='weight')
@@ -268,11 +269,16 @@ class GraphBuilder:
                 # k.set_value(10*)
             mx_node.set_centroid(True)
 
+        # pr = nx.pagerank_numpy(G, alpha=0.9, weight='weight')
+        # for k in pr.keys():
+        #     v = pr[k]
+        #     k.set_value(1 * math.exp(v))
+
         new_links = []
         for link in self.links:
             # if link.fr.get_group() == bg or link.to.get_group() == bg:
             #     continue
-            if link.fr.get_group() == link.to.get_group() or link.fr.is_centroid() or link.to.is_centroid():
+            if link.fr.is_centroid() and link.to.is_centroid():
                 new_links.append(link)
             else:
                 pass
