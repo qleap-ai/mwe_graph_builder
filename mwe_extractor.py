@@ -2,6 +2,8 @@ from gensim.models import Phrases
 from gensim.models.phrases import Phraser
 import re
 import codecs
+from google.cloud import storage
+import json
 
 iterations = 2
 accepted_connectors = ["of", "with", "without", "the", "a", "&"]
@@ -152,5 +154,25 @@ def train_phrases_model(articles, iterations):
     return build_mwe_set(articles)
 
 
+def load_mwes(filename):
+    bucket_name = "semantic_features"
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob_name = "mwes/" + filename
+    blob = bucket.blob(blob_name)
+    dest = "/tmp/"+filename
+    blob.download_to_filename(dest)
+
+    with open(dest, encoding='utf8') as json_file:
+        mwes = json.load(json_file)
+    return set(mwes['mwes'])
+
+
 def extract_mwes(articles):
-    return train_phrases_model(articles, 2)
+
+    new_mwes=train_phrases_model(articles, 2)
+    incr_mwes = load_mwes('incr_current.json')
+    cum_mwes = load_mwes('cum_current.json')
+    my_mwes = new_mwes - cum_mwes
+    my_mwes = my_mwes.union(incr_mwes)
+    return my_mwes

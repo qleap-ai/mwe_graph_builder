@@ -16,18 +16,18 @@ def run(event, context):
          `timestamp` field contains the publish time.
     """
 
-
-
     gb = GraphBuilder()
     graph = gb.run()
     graph['about'] = "When reading news online it is often the case that a main topic is covered thoroughly across " \
                      "many outlets. Sometimes it is difficult to find other relevant information apart of the main topic. " \
-                     "This website shows central but well-distinct news headlines of the last two hours from various news sources.<br>" \
-                     "The approach collects and clusters the news articles of the last two hours into different groups based on their " \
-                     "semantic features. The displayed headlines correspond to the most central one per group. " \
+                     "This website shows central but well-distinct news headlines that differ from the current main topic. " \
+                     "(Unless it is really a new topic) <br>" \
+                     "The complete unsupervised approach collects and clusters the news articles of the last two hours " \
+                     "into different groups based on their " \
+                     "semantic features and shows the the most central one per group. " \
                      "The size of the nodes indicate the centrality of the individual headline.<br>" \
                      "The content of this pages refreshes every hour. You just have to click the reload button. " \
-                     "For question or comments please email me at gregor_AT_qleap_DOT_ai."
+                     "For question or comments please email me at <a href = \"mailto: gregor@qleap.ai\">gregor@qleap.ai</a>."
     tmp_file = "/tmp/tmp.json"
     with open(tmp_file, "w") as tmp:
         json.dump(graph, tmp)
@@ -35,11 +35,10 @@ def run(event, context):
     bucket_name = "qleap.ai"
     storage_client = storage.Client()
 
-
     # rotate old
     for i in range(9, -1, -1):
-        source_blob_name = "graph_data/mwe_graph_"+str(i)+".json"
-        target_blob_name = "graph_data/mwe_graph_" + str(i+1) + ".json"
+        source_blob_name = "graph_data/mwe_graph_" + str(i) + ".json"
+        target_blob_name = "graph_data/mwe_graph_" + str(i + 1) + ".json"
 
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(source_blob_name)
@@ -51,4 +50,5 @@ def run(event, context):
     blob.upload_from_filename(tmp_file)
 
 
-# run("","")
+# for i in range(5, -1, -1):
+#     run(i, "")

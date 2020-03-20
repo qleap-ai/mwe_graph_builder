@@ -61,7 +61,7 @@ class Link:
         self.value += 1
 
     def to_dict(self):
-        return {'id': self.id, 'source': self.fr.get_id(), 'target': self.to.get_id(), 'strength': self.value}
+        return {'id': self.id, 'source': self.fr.get_id(), 'target': self.to.get_id(), 'strength': min(self.value, 10)}
 
     def set_num_id(self, id):
         self.num_id = id
@@ -85,6 +85,8 @@ class GraphBuilder:
         self.handles = set()
         self.fire_db = firestore.Client()
         self.normalized = {}
+        self.links_already = {}
+        self.idx = 0
 
     # loads all articles for a given collection for above defined time period
     def get_articles(self, col, fr, to):
@@ -133,9 +135,9 @@ class GraphBuilder:
 
     def create_graph(self):
         node_list = [node for node in self.connectors.keys()]
-        idx = 0
+
         for i in range(0, len(node_list) - 1):
-            links_already = {}
+
             n1 = node_list[i]
             mwe1 = self.connectors[n1]
             for j in range(i + 1, len(node_list)):
@@ -143,21 +145,7 @@ class GraphBuilder:
                 mwe2 = self.connectors[n1]
                 for mwe in mwe1:
                     if mwe in mwe2:
-                        k1 = n1.get_id() + "_" + n2.get_id()
-                        k2 = n2.get_id() + "_" + n1.get_id()
-                        if k1 in links_already.keys():
-                            l1 = links_already[k1]
-                            l1.increment()
-                            l2 = links_already[k2]
-                            l2.increment()
-                        else:
-                            l1 = Link(idx, n1, n2)
-                            links_already[k1] = l1
-                            self.links.append(l1)
-                            idx += 1
-                            l2 = Link(idx, n1, n2)
-                            links_already[k2] = l2
-                            self.links.append(l2)
+                        self.link(n1, n2)
 
     def filter_unique(self, articles):
 
@@ -183,11 +171,12 @@ class GraphBuilder:
 
         return ret
 
-    def run(self):
+    def run(self, coeff=0):
         # mwes = self.load_incr()
         # fr = mwes['from_date']
         # to = mwes['to_date']
-        to = time.time()
+        offset = coeff * 3600
+        to = time.time() - offset
         fr = to - 2 * 3600
         articles = self.load_articles(fr, to)
         articles = self.rm_inconsitent(articles)
@@ -283,6 +272,10 @@ class GraphBuilder:
             else:
                 pass
         self.links = new_links
+        cnt = [node for node in self.nodes.values() if node.centroid is True]
+        for i in range(0, len(cnt) - 1):
+            for j in range(i + 1, len(cnt)):
+                self.link(cnt[i], cnt[j])
 
         #
         # pr = nx.pagerank_numpy(G, alpha=0.9,weight='weight')
@@ -315,3 +308,20 @@ class GraphBuilder:
                     continue
                 if mwe in mwe2:
                     self.normalized[mwe] = mwe2
+
+    def link(self, n1, n2):
+        k1 = n1.get_id() + "_" + n2.get_id()
+        k2 = n2.get_id() + "_" + n1.get_id()
+        if k1 in self.links_already.keys():
+            l1 = self.links_already[k1]
+            l1.increment()
+            l2 = self.links_already[k2]
+            l2.increment()
+        else:
+            l1 = Link(self.idx, n1, n2)
+            self.links_already[k1] = l1
+            self.links.append(l1)
+            self.idx += 1
+            l2 = Link(self.idx, n1, n2)
+            self.links_already[k2] = l2
+            self.links.append(l2)
